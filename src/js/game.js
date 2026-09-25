@@ -105,6 +105,17 @@ function movePacman( game ) {
       grid[ p.y ][ p.x ] = 0;
       game.score += 10;
       game.dotsRemaining--;
+    } else if ( grid[ p.y ][ p.x ] === 4 ) {
+      grid[ p.y ][ p.x ] = 0;
+      game.score += 50;
+      game.dotsRemaining--;
+      game.frightenedTimer = 6;
+      game.ghostsEaten = 0;
+      for ( const g of game.ghosts ) {
+        if ( !g.inPen && OPPOSITE[ g.dir ] ) {
+          g.dir = OPPOSITE[ g.dir ];
+        }
+      }
     }
     // Si no puede seguir, se detiene en la celda.
     if ( !canMove( grid, p.x, p.y, p.dir, 'pacman' ) ) return;
