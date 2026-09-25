@@ -37,11 +37,15 @@ function createGame() {
       speed: PACMAN_SPEED,
     },
     ghosts: GHOST_STARTS.map( ( g ) => ( {
+      id: g.id,
       x: g.x,
       y: g.y,
-      dir: 'up',
+      dir: g.dir,
       speed: GHOST_SPEED,
-      kind: g.kind,
+      color: g.color,
+      inPen: g.inPen,
+      timer: 0,
+      exitDelay: g.exitDelay,
     } ) ),
   };
 }
@@ -58,7 +62,7 @@ function isWall( grid, x, y, actor ) {
   if ( x < 0 || x >= grid[ 0 ].length ) return true;
   const v = grid[ y ][ x ];
   if ( v === 1 ) return true;
-  if ( v === 3 && actor === 'pacman' ) return true;
+  if ( v === 3 ) return true;
   return false;
 }
 
@@ -110,40 +114,95 @@ function movePacman( game ) {
   wrapTunnel( p, width );
 }
 
+const DIR_PRIORITY = [ 'up', 'left', 'down', 'right' ];
+
+function getGhostTarget( game, ghost ) {
+  const p = game.pacman;
+  const pDir = DIRS[ p.dir ] || { x: 0, y: 0 };
+
+  switch ( ghost.id ) {
+    case 'blinky':
+      return { x: p.x, y: p.y };
+
+    case 'pinky':
+      return { x: p.x + pDir.x * 4, y: p.y + pDir.y * 4 };
+
+    case 'inky': {
+      const blinky = game.ghosts.find( ( g ) => g.id === 'blinky' );
+      const bx = blinky ? blinky.x : p.x;
+      const by = blinky ? blinky.y : p.y;
+      const interX = p.x + pDir.x * 2;
+      const interY = p.y + pDir.y * 2;
+      return {
+        x: interX + ( interX - bx ),
+        y: interY + ( interY - by ),
+      };
+    }
+
+    case 'clyde': {
+      const dist = Math.hypot( ghost.x - p.x, ghost.y - p.y );
+      if ( dist > 8 ) {
+        return { x: p.x, y: p.y };
+      }
+      return { x: 0, y: 30 };
+    }
+
+    default:
+      return { x: p.x, y: p.y };
+  }
+}
+
 function decideGhost( game, g ) {
   const grid = game.grid;
-  const p = game.pacman;
 
-  const options = Object.keys( DIRS ).filter(
+  const options = DIR_PRIORITY.filter(
     ( dir ) => dir !== OPPOSITE[ g.dir ] && canMove( grid, g.x, g.y, dir, 'ghost' )
   );
   // Sin salida (callejon): permitir el giro de 180.
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
 
-  if ( g.kind === 'hunter' ) {
-    const px = Math.round( p.x );
-    const py = Math.round( p.y );
-    let best = choices[ 0 ];
-    let bestDist = Infinity;
-    for ( const dir of choices ) {
-      const d = DIRS[ dir ];
-      const nx = g.x + d.x;
-      const ny = g.y + d.y;
-      const dist = Math.abs( nx - px ) + Math.abs( ny - py );
-      if ( dist < bestDist ) {
-        bestDist = dist;
-        best = dir;
-      }
+  const target = getGhostTarget( game, g );
+  let best = choices[ 0 ];
+  let bestDist = Infinity;
+
+  for ( const dir of choices ) {
+    const d = DIRS[ dir ];
+    const nx = g.x + d.x;
+    const ny = g.y + d.y;
+    const dist = Math.hypot( nx - target.x, ny - target.y );
+    if ( dist < bestDist ) {
+      bestDist = dist;
+      best = dir;
     }
-    g.dir = best;
-  } else {
-    g.dir = choices[ Math.floor( Math.random() * choices.length ) ];
   }
+  g.dir = best;
 }
 
 function moveGhost( game, g ) {
   const grid = game.grid;
   const width = grid[ 0 ].length;
+
+  if ( g.inPen ) {
+    g.timer += 1 / 60;
+    if ( g.timer >= g.exitDelay ) {
+      if ( Math.abs( g.x - 13 ) > 1e-3 ) {
+        g.dir = g.x < 13 ? 'right' : 'left';
+        const step = Math.sign( 13 - g.x ) * Math.min( g.speed, Math.abs( 13 - g.x ) );
+        g.x += step;
+        if ( Math.abs( g.x - 13 ) < 1e-3 ) g.x = 13;
+      } else {
+        g.x = 13;
+        g.dir = 'up';
+        g.y -= g.speed;
+        if ( g.y <= 11 + 1e-3 ) {
+          g.y = 11;
+          g.inPen = false;
+          g.dir = 'left';
+        }
+      }
+    }
+    return;
+  }
 
   if ( aligned( g.x ) && aligned( g.y ) ) {
     g.x = Math.round( g.x );
@@ -165,9 +224,12 @@ function resetPositions( game ) {
   p.dir = 'left';
   p.nextDir = null;
   game.ghosts.forEach( ( g, i ) => {
-    g.x = GHOST_STARTS[ i ].x;
-    g.y = GHOST_STARTS[ i ].y;
-    g.dir = 'up';
+    const s = GHOST_STARTS[ i ];
+    g.x = s.x;
+    g.y = s.y;
+    g.dir = s.dir;
+    g.inPen = s.inPen;
+    g.timer = 0;
   } );
 }
 
@@ -197,3 +259,4 @@ function update( game ) {
 window.createGame = createGame;
 window.update = update;
 window.DIRS = DIRS;
+window.getGhostTarget = getGhostTarget;
