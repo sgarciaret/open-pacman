@@ -174,6 +174,11 @@ function decideGhost( game, g ) {
   // Sin salida (callejon): permitir el giro de 180.
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
 
+  if ( game.frightenedTimer > 0 ) {
+    g.dir = choices[ Math.floor( Math.random() * choices.length ) ];
+    return;
+  }
+
   const target = getGhostTarget( game, g );
   let best = choices[ 0 ];
   let bestDist = Infinity;
@@ -237,8 +242,25 @@ function moveGhost( game, g ) {
   }
 
   const d = DIRS[ g.dir ];
-  g.x += d.x * g.speed;
-  g.y += d.y * g.speed;
+  const effectiveSpeed = ( game.frightenedTimer > 0 && !g.inPen ) ? g.speed * 0.5 : g.speed;
+
+  if ( d.x !== 0 ) {
+    const nextInt = d.x > 0 ? Math.floor( g.x + 1e-4 ) + 1 : Math.ceil( g.x - 1e-4 ) - 1;
+    const dist = Math.abs( nextInt - g.x );
+    if ( dist <= effectiveSpeed + 1e-5 ) {
+      g.x = nextInt;
+    } else {
+      g.x += d.x * effectiveSpeed;
+    }
+  } else if ( d.y !== 0 ) {
+    const nextInt = d.y > 0 ? Math.floor( g.y + 1e-4 ) + 1 : Math.ceil( g.y - 1e-4 ) - 1;
+    const dist = Math.abs( nextInt - g.y );
+    if ( dist <= effectiveSpeed + 1e-5 ) {
+      g.y = nextInt;
+    } else {
+      g.y += d.y * effectiveSpeed;
+    }
+  }
   wrapTunnel( g, width );
 }
 
@@ -264,6 +286,11 @@ function collides( a, b ) {
 }
 
 function update( game ) {
+  if ( game.frightenedTimer > 0 ) {
+    game.frightenedTimer -= 1 / 60;
+    if ( game.frightenedTimer < 0 ) game.frightenedTimer = 0;
+  }
+
   movePacman( game );
   game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
 
