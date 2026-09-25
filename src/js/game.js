@@ -46,6 +46,7 @@ function createGame() {
       inPen: g.inPen,
       timer: 0,
       exitDelay: g.exitDelay,
+      bounceDir: -1,
     } ) ),
   };
 }
@@ -230,6 +231,7 @@ function resetPositions( game ) {
     g.dir = s.dir;
     g.inPen = s.inPen;
     g.timer = 0;
+    g.bounceDir = -1;
   } );
 }
 

@@ -1,6 +1,6 @@
 # SPEC 02 — Salida escalonada forzada y bloqueo de reentrada al corral de fantasmas
 
-> **Status:** Borrador
+> **Status:** Aprobado
 > **Depends on:** SPEC 01
 > **Date:** 2026-09-25
 > **Objective:** Garantizar la salida escalonada fluida de todos los fantasmas con oscilación previa dentro del corral y prohibir estrictamente su reentrada a través de la puerta una vez en el laberinto.
