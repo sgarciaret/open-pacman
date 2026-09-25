@@ -46,6 +46,7 @@ function createGame() {
       inPen: g.inPen,
       timer: 0,
       exitDelay: g.exitDelay,
+      bounceDir: -1,
     } ) ),
   };
 }
@@ -56,13 +57,12 @@ function aligned( v ) {
 
 // Una celda es muro para el actor dado?
 //   pacman: bloqueado por pared (1) y puerta (3)
-//   ghost:  bloqueado solo por pared (1)
+//   ghost:  bloqueado por pared (1) y puerta (3) para impedir reentrada al corral
 function isWall( grid, x, y, actor ) {
   if ( y < 0 || y >= grid.length ) return true;
   if ( x < 0 || x >= grid[ 0 ].length ) return true;
   const v = grid[ y ][ x ];
-  if ( v === 1 ) return true;
-  if ( v === 3 ) return true;
+  if ( v === 1 || v === 3 ) return true;
   return false;
 }
 
@@ -184,21 +184,33 @@ function moveGhost( game, g ) {
 
   if ( g.inPen ) {
     g.timer += 1 / 60;
-    if ( g.timer >= g.exitDelay ) {
-      if ( Math.abs( g.x - 13 ) > 1e-3 ) {
-        g.dir = g.x < 13 ? 'right' : 'left';
-        const step = Math.sign( 13 - g.x ) * Math.min( g.speed, Math.abs( 13 - g.x ) );
-        g.x += step;
-        if ( Math.abs( g.x - 13 ) < 1e-3 ) g.x = 13;
-      } else {
-        g.x = 13;
-        g.dir = 'up';
-        g.y -= g.speed;
-        if ( g.y <= 11 + 1e-3 ) {
-          g.y = 11;
-          g.inPen = false;
-          g.dir = 'left';
-        }
+    if ( g.timer < g.exitDelay ) {
+      const bounceSpeed = g.speed * 0.5;
+      g.y += g.bounceDir * bounceSpeed;
+      if ( g.y <= 13.5 ) {
+        g.y = 13.5;
+        g.bounceDir = 1;
+      } else if ( g.y >= 14.5 ) {
+        g.y = 14.5;
+        g.bounceDir = -1;
+      }
+      g.dir = g.bounceDir === -1 ? 'up' : 'down';
+      return;
+    }
+
+    if ( Math.abs( g.x - 13 ) > 1e-3 ) {
+      g.dir = g.x < 13 ? 'right' : 'left';
+      const step = Math.sign( 13 - g.x ) * Math.min( g.speed, Math.abs( 13 - g.x ) );
+      g.x += step;
+      if ( Math.abs( g.x - 13 ) < 1e-3 ) g.x = 13;
+    } else {
+      g.x = 13;
+      g.dir = 'up';
+      g.y -= g.speed;
+      if ( g.y <= 11 + 1e-3 ) {
+        g.y = 11;
+        g.inPen = false;
+        g.dir = 'left';
       }
     }
     return;
@@ -230,6 +242,7 @@ function resetPositions( game ) {
     g.dir = s.dir;
     g.inPen = s.inPen;
     g.timer = 0;
+    g.bounceDir = -1;
   } );
 }
 
