@@ -37,11 +37,15 @@ function createGame() {
       speed: PACMAN_SPEED,
     },
     ghosts: GHOST_STARTS.map( ( g ) => ( {
+      id: g.id,
       x: g.x,
       y: g.y,
-      dir: 'up',
+      dir: g.dir,
       speed: GHOST_SPEED,
-      kind: g.kind,
+      color: g.color,
+      inPen: g.inPen,
+      timer: 0,
+      exitDelay: g.exitDelay,
     } ) ),
   };
 }
@@ -58,7 +62,7 @@ function isWall( grid, x, y, actor ) {
   if ( x < 0 || x >= grid[ 0 ].length ) return true;
   const v = grid[ y ][ x ];
   if ( v === 1 ) return true;
-  if ( v === 3 && actor === 'pacman' ) return true;
+  if ( v === 3 ) return true;
   return false;
 }
 
@@ -145,6 +149,28 @@ function moveGhost( game, g ) {
   const grid = game.grid;
   const width = grid[ 0 ].length;
 
+  if ( g.inPen ) {
+    g.timer += 1 / 60;
+    if ( g.timer >= g.exitDelay ) {
+      if ( Math.abs( g.x - 13 ) > 1e-3 ) {
+        g.dir = g.x < 13 ? 'right' : 'left';
+        const step = Math.sign( 13 - g.x ) * Math.min( g.speed, Math.abs( 13 - g.x ) );
+        g.x += step;
+        if ( Math.abs( g.x - 13 ) < 1e-3 ) g.x = 13;
+      } else {
+        g.x = 13;
+        g.dir = 'up';
+        g.y -= g.speed;
+        if ( g.y <= 11 + 1e-3 ) {
+          g.y = 11;
+          g.inPen = false;
+          g.dir = 'left';
+        }
+      }
+    }
+    return;
+  }
+
   if ( aligned( g.x ) && aligned( g.y ) ) {
     g.x = Math.round( g.x );
     g.y = Math.round( g.y );
@@ -165,9 +191,12 @@ function resetPositions( game ) {
   p.dir = 'left';
   p.nextDir = null;
   game.ghosts.forEach( ( g, i ) => {
-    g.x = GHOST_STARTS[ i ].x;
-    g.y = GHOST_STARTS[ i ].y;
-    g.dir = 'up';
+    const s = GHOST_STARTS[ i ];
+    g.x = s.x;
+    g.y = s.y;
+    g.dir = s.dir;
+    g.inPen = s.inPen;
+    g.timer = 0;
   } );
 }
 
