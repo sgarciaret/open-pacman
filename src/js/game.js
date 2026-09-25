@@ -185,21 +185,33 @@ function moveGhost( game, g ) {
 
   if ( g.inPen ) {
     g.timer += 1 / 60;
-    if ( g.timer >= g.exitDelay ) {
-      if ( Math.abs( g.x - 13 ) > 1e-3 ) {
-        g.dir = g.x < 13 ? 'right' : 'left';
-        const step = Math.sign( 13 - g.x ) * Math.min( g.speed, Math.abs( 13 - g.x ) );
-        g.x += step;
-        if ( Math.abs( g.x - 13 ) < 1e-3 ) g.x = 13;
-      } else {
-        g.x = 13;
-        g.dir = 'up';
-        g.y -= g.speed;
-        if ( g.y <= 11 + 1e-3 ) {
-          g.y = 11;
-          g.inPen = false;
-          g.dir = 'left';
-        }
+    if ( g.timer < g.exitDelay ) {
+      const bounceSpeed = g.speed * 0.5;
+      g.y += g.bounceDir * bounceSpeed;
+      if ( g.y <= 13.5 ) {
+        g.y = 13.5;
+        g.bounceDir = 1;
+      } else if ( g.y >= 14.5 ) {
+        g.y = 14.5;
+        g.bounceDir = -1;
+      }
+      g.dir = g.bounceDir === -1 ? 'up' : 'down';
+      return;
+    }
+
+    if ( Math.abs( g.x - 13 ) > 1e-3 ) {
+      g.dir = g.x < 13 ? 'right' : 'left';
+      const step = Math.sign( 13 - g.x ) * Math.min( g.speed, Math.abs( 13 - g.x ) );
+      g.x += step;
+      if ( Math.abs( g.x - 13 ) < 1e-3 ) g.x = 13;
+    } else {
+      g.x = 13;
+      g.dir = 'up';
+      g.y -= g.speed;
+      if ( g.y <= 11 + 1e-3 ) {
+        g.y = 11;
+        g.inPen = false;
+        g.dir = 'left';
       }
     }
     return;
